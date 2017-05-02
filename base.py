@@ -62,21 +62,21 @@ class Matrix(object):
         """
         self.X = invert(self.X)
         return self
-    
+
     @property
     def rows(self):
         """
         Number of rows in the matrix
         """
         return len(self.X)
-    
+
     @property
     def cols(self):
         """
         Number of columns in the matrix
         """
         return len(self.X[0])
-    
+
     def transpose(self):
         """
         Transpose the matrix in place.
@@ -192,26 +192,6 @@ def row_multiply(r1,r2):
         products.append(r1[i]*r2[i])
     return sum(products)
 
-def check_for_all_zeros(X,i,j):
-    """
-    Check matrix X to see if only zeros exist at or below row i in column j
-    X - a list of lists
-    i - row index
-    j - column index
-    returns -
-        zero_sum - the count of non zero entries
-        first_non_zero - index of the first non value
-    """
-    non_zeros = []
-    first_non_zero = -1
-    for m in xrange(i,len(X)):
-        non_zero = X[m][j]!=0
-        non_zeros.append(non_zero)
-        if first_non_zero==-1 and non_zero:
-            first_non_zero = m
-    zero_sum = sum(non_zeros)
-    return zero_sum, first_non_zero
-
 def swap_row(X,i,p):
     """
     Swap row i and row p in a list of lists
@@ -243,56 +223,34 @@ def make_identity(r,c):
 
 def invert(X):
     """
-    Invert a matrix X according to gauss-jordan elimination
-    In gauss-jordan elimination, we perform basic row operations to turn a matrix into
-    row-echelon form.  If we concatenate an identity matrix to our input
-    matrix during this process, we will turn the identity matrix into our inverse.
-    X - input list of lists where each list is a matrix row
+    Invert matrix X using Gaussian elimination method.
+    X - list of lists where each list is a matrix row
     returns - inverse of X
     """
-    #copy X to avoid altering input
-    X = deepcopy(X)
+    mlen = len(X) # length of matrix
+    # M = [ X | I ], below append each row of I to X
+    M = [X[x]+[0]*x+[1]+[0]*(mlen-x-1) for x in range(mlen)]
 
-    #Get dimensions of X
-    rows = len(X)
-    cols = len(X[0])
-
-    #Get the identity matrix and append it to the right of X
-    #This is done because our row operations will make the identity into the inverse
-    identity = make_identity(rows,cols)
-    for i in xrange(0,rows):
-        X[i]+=identity[i]
-
-    i = 0
-    for j in xrange(0,cols):
-        #Check to see if there are any nonzero values below the current row in the current column
-        zero_sum, first_non_zero = check_for_all_zeros(X,i,j)
-        #If everything is zero, increment the columns
-        if zero_sum==0:
-            if j==cols:
-                return X
+    # Iterate over the matrix diagonally where n = i = j
+    for n in range(mlen):
+        try: # Get index of first non zero
+            m = next(m for m in range(n, mlen) if M[m][n])
+            if m != n: # If M[i][j] is 0, swap row with non zero below it
+                M[n], M[m] = M[m], M[n]
+        except StopIteration: # If all values are 0
+            if n == mlen: # XXX: I wonder if this is even used
+                return M
             raise Exception("Matrix is singular.")
-        #If X[i][j] is 0, and there is a nonzero value below it, swap the two rows
-        if first_non_zero != i:
-            X = swap_row(X,i,first_non_zero)
-        #Divide X[i] by X[i][j] to make X[i][j] equal 1
-        X[i] = [m/X[i][j] for m in X[i]]
 
-        #Rescale all other rows to make their values 0 below X[i][j]
-        for q in xrange(0,rows):
-            if q!=i:
-                scaled_row = [X[q][j] * m for m in X[i]]
-                X[q]= [X[q][m] - scaled_row[m] for m in xrange(0,len(scaled_row))]
-        #If either of these is true, we have iterated through the matrix, and are done
-        if i==rows or j==cols:
-            break
-        i+=1
+        # Divide M[i] by M[i][j] to make M[i][j] equal 1
+        M[n] = [m / M[n][n] for m in M[n]]
 
-    #Get just the right hand matrix, which is now our inverse
-    for i in xrange(0,rows):
-        X[i] = X[i][cols:len(X[i])]
+        # Rescale all other mlen to make their values 0 below M[i][j]
+        for q in range(mlen):
+            if q != n:
+                M[q] = [M[q][m] - M[q][n] * M[n][m] for m in range(mlen*2)]
 
-    return X
+    return [M[i][mlen:] for i in range(mlen)] # Return right part of matrix
 
 def mean(l):
     """
